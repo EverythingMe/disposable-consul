@@ -4,13 +4,15 @@ from subprocess import Popen, PIPE
 import tempfile
 import shutil
 import socket
-import sys
 import os
 import json
 
 
 class DisposableConsul(object):
-    def __init__(self):
+    DEFAULT_CONSUL_BIN = 'consul'
+
+    def __init__(self, consul_bin=DEFAULT_CONSUL_BIN):
+        self.consul_bin = consul_bin
         self.temp_dir = None
         self.consul = None
         self.config = None
@@ -24,15 +26,12 @@ class DisposableConsul(object):
         return port
 
     def start(self):
-        consul_bin = os.path.join(os.path.dirname(__file__), 'static', 'bin', sys.platform, 'consul')
-        if not os.path.isfile(consul_bin):
-            raise RuntimeError('Seems like the test suite does not support your platform ({})'.format(sys.platform))
         self.temp_dir = tempfile.mkdtemp()
         self.config = self.generate_config()
         config_file = os.path.join(self.temp_dir, 'config.json')
         with open(config_file, 'w') as f:
             json.dump(self.config, f)
-        self.consul = Popen([consul_bin, 'agent', '-server',
+        self.consul = Popen([self.consul_bin, 'agent', '-server',
                              '-data-dir', self.temp_dir,
                              '-bootstrap-expect', '1',
                              '-config-file', config_file], stdout=PIPE, stderr=PIPE)
